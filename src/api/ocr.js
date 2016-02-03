@@ -4,6 +4,7 @@ var router = require('koa-router')();
 var path = require('path');
 var fse = require('fs-extra');
 var request = require('request');
+var parser = require('../utils/parser');
 
 module.exports = router;
 
@@ -16,6 +17,7 @@ router
 
 function * executeOCR () {
   var url = this.query.url;
+  var parse = this.query.parse === 'true';
   if (!url) throw new Error('Missing required parameter - url');
 
   var urlSplit = url.split('/');
@@ -30,8 +32,8 @@ function * executeOCR () {
 
   var tempFile = yield _download(url);
   var hash = yield _getHash(tempFile);
-
-  var hotFolder = path.join(baseHotFolder, hash);
+  var subFolder = _toSingleNumber(hash);
+  var hotFolder = path.join(baseHotFolder, subFolder, hash);
 
   var exists = yield _exists(hotFolder);
   if (!exists) {
@@ -44,10 +46,24 @@ function * executeOCR () {
   }
 
   var outputTextFile = path.join(hotFolder, textFile);
-
+  // this.body = 'created';
   yield _waitUntilFileCreated(outputTextFile);
 
-  this.body = yield _readFile(outputTextFile);
+  var text = yield _readFile(outputTextFile);
+
+  // var index = text.indexOf('Page 4 of 5');
+  // var split = text.split(String.fromCharCode(12));
+  // console.log(split.length);
+  // console.log(text.charCodeAt(index-1));
+  // this.body = parse ? parser.parse(text) : text;
+  this.body = parser.parse(text);
+}
+
+function _toSingleNumber (s) {
+  var max = 4;
+  var total = 0;
+  for (var i = 0; i < s.length; i++) total += s.charCodeAt(i);
+  return (total % max + 1) + '';
 }
 
 function * _waitUntilFileCreated (path) {
@@ -58,11 +74,17 @@ function * _waitUntilFileCreated (path) {
   }
 }
 
+function _getRandomName () {
+  const max = 2000;
+  const min = 1;
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
 // returns downloaded file path
 function * _download (url) {
   yield _ensureDir(tempFolder);
   return new Promise((resolve, reject) => {
-    var tempDownloadTarget = path.join(tempFolder, Date.now() + '.pdf');
+    var tempDownloadTarget = path.join(tempFolder, _getRandomName() + '.pdf');
     request(url, (err, msg, body) => {
       if (err) reject(err);
       if (msg.statusCode !== 200) {
