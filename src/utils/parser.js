@@ -7,11 +7,8 @@ function parse (text) {
   var pages = text.split(pageBreak);
   var pageTypes = {};
 
-  var docs = _.chain(pages).map(_extractDocs).filter(p => p).flatten();
-
-  return docs;
-
-  // return pages.filter(p => _getPageType(p) === 'form1449A').join('/n/n==================/n/n')
+  return _.chain(pages).map(_extractDocs).filter(p => p).flatten();
+  // return pages.filter(p => /form1449/.test(_getPageType(p))).map(_extractDocs1449).join('\n\n==================\n\n')
 
   // return _.chain(pages)
   //   .map(_extractDocs)
@@ -27,9 +24,16 @@ function _extractDocs (p) {
   var pType = _getPageType(p);
   switch (pType) {
     case 'form1449':
+    case 'form1449A':
       return _extractDocs1449(p);
   }
 }
+
+
+// This applies for both US and Foreign
+// the structure is
+// [doc number] [date] [inventor / country];
+const patentDocRegExp = /([\S ]*)[\t\r\n\f]*(\d{2}\/\d{2}\/\d{4})[\t\r\n\f]*(.*?)[\t\r\n\f]+/g;
 
 function _extractDocs1449 (p) {
   var usDocsStart = p.search(/U. *S. PATENT DOCUMENTS/);
@@ -42,18 +46,29 @@ function _extractDocs1449 (p) {
 
   // extract us docs
   // common case
-  var usDocRegExp = /(\S*)[\t\r\n\f]*(\d{2}\/\d{2}\/\d{4})[\t\r\n\f]*(.*?)[\t\r\n\f]+/g;
-  var usDocs = _.chain([usDocRegExp])
+  var usDocs = _.chain([patentDocRegExp])
     .map(re => _findAllMatches(usDocsText, re))
     .flatten()
     .map(match => ({
       documentNumber: match[1].replace(/,/g, ''),
       publicationDate: match[2],
       inventor: match[3],
-      country: 'US'
+      country: 'US',
+      type: 'US',
     }))
     .value();
-  return usDocs;
+
+  var foreignDocs = _.chain([patentDocRegExp])
+    .map(re => _findAllMatches(foreignDocsText, re))
+    .flatten()
+    .map(match => ({
+      documentNumber: match[1].replace(/,/g, ''),
+      publicationDate: match[2],
+      type: 'Foreign',
+      countryName: match[3]
+    }))
+    .value();
+  return [...usDocs, ...foreignDocs];
 }
 
 function _getPageType (p) {
