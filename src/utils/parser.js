@@ -5,7 +5,7 @@ const pageBreak = String.fromCharCode(12);
 function parse (text) {
   // split into pages
   var pages = text.split(pageBreak);
-  var pageTypes = {};
+  // var pageTypes = {};
 
   return _.chain(pages).map(_extractDocs).filter(p => p).flatten();
   // return pages.filter(p => /form1449/.test(_getPageType(p))).map(_extractDocs1449).join('\n\n==================\n\n')
@@ -28,7 +28,6 @@ function _extractDocs (p) {
       return _extractDocs1449(p);
   }
 }
-
 
 // This applies for both US and Foreign
 // the structure is
@@ -54,7 +53,7 @@ function _extractDocs1449 (p) {
       publicationDate: match[2],
       inventor: match[3],
       country: 'US',
-      type: 'US',
+      type: 'US'
     }))
     .value();
 
@@ -68,6 +67,17 @@ function _extractDocs1449 (p) {
       countryName: match[3]
     }))
     .value();
+
+  // var nplDocs = _.chain([patentDocRegExp])
+  //   .map(re => _findAllMatches(foreignDocsText, re))
+  //   .flatten()
+  //   .map(match => ({
+  //     documentNumber: match[1].replace(/,/g, ''),
+  //     publicationDate: match[2],
+  //     type: 'Foreign',
+  //     countryName: match[3]
+  //   }))
+  //   .alue();
   return [...usDocs, ...foreignDocs];
 }
 
